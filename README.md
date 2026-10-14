@@ -1,8 +1,12 @@
 # Google Flow CLI (`google-flow-cli`)
 
+[![CI](https://github.com/Zahed316/google-flow-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/Zahed316/google-flow-cli/actions/workflows/ci.yml)
+[![GitHub stars](https://img.shields.io/github/stars/Zahed316/google-flow-cli.svg?style=flat&color=yellow)](https://github.com/Zahed316/google-flow-cli/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/Zahed316/google-flow-cli.svg)](https://github.com/Zahed316/google-flow-cli/issues)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![Playwright Supported](https://img.shields.io/badge/playwright-dynamic%20discovery-orange.svg)](https://playwright.dev/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Zahed316/google-flow-cli/blob/main/CONTRIBUTING.md)
 [![Google Flow](https://img.shields.io/badge/platform-flow.google.com-4285F4.svg)](https://flow.google.com)
 
 A universal, declarative Command-Line Interface (CLI) and programmatic Node.js SDK for **Google Flow** (`flow.google.com`). Automates AI video generation (DeepMind Veo 3.1 & Omni 1.1 Flash) and static image keyframing (Nano Banana 2.1 / Pro / Lite) via persistent Chrome DevTools Protocol (CDP).
@@ -23,6 +27,8 @@ Designed for automated video pipelines, motion graphics workflows, and AI coding
 - [Maintenance & Future Updates Guide](#-maintenance--future-updates-guide)
 - [Security & Credentials](#-security--credentials)
 - [Claude Code Skill Integration](#-claude-code-skill-integration)
+- [Star History](#-star-history)
+- [Community & Contributing](#-community--contributing)
 - [License](#-license)
 
 ---
@@ -58,10 +64,10 @@ Standard browser automation frameworks (`puppeteer.launch()`, `chromium.launch()
 +-------------------------------------------------------------------------+
 ```
 
-### Architectural Advantages:
-1. **Indefinite Google Authentication**: You log in to Google Flow once. Your genuine authentication cookies persist in `~/.config/google-chrome-flow`.
-2. **Zero Bot Detection**: Native Chrome binary with genuine canvas fingerprints, WebGL contexts, and user profiles.
-3. **Signed Cloud CDN Extraction**: Generated videos are served from signed Google Cloud CDN endpoints. The CLI retrieves these URLs and downloads them directly via `curl` with resume and integrity checks, bypassing browser download dialogs entirely.
+### Killer Differentiators & Why This Exists:
+1. **Why this exists (Zero Bot Flags & Permanent Login)**: Standard Playwright/Puppeteer launches trigger Google's automated-browser detection (`AutomationControlled`), rejecting logins. `google-flow-cli` connects directly to your genuine, native Google Chrome via Chrome DevTools Protocol (CDP) on port 9222. Zero bot detection flags, real canvas fingerprints, and you remain logged in forever in your persistent profile (`~/.config/google-chrome-flow`).
+2. **Cloud CDN Signed Direct Download**: Flow renders video assets via signed Google Cloud CDN endpoints. The CLI retrieves these signed URLs programmatically and downloads them directly via `curl` with resume capability and zero intrusive browser download dialogs or popup blockers.
+3. **Declarative Multi-Scene Chaining**: Automatically chains sequential scenes defined in `flow.json` (Scene N end frame becomes Scene N+1 start frame) for coherent continuous narratives and long-form AI video generation.
 
 ---
 
@@ -384,6 +390,21 @@ cp -r skills/google-flow/* ~/.claude/skills/google-flow/
 ```
 
 Claude Code will then automatically discover the `/google-flow` skill and execute autonomous generation pipelines.
+
+---
+
+## 📈 Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Zahed316/google-flow-cli&type=Date)](https://star-history.com/#Zahed316/google-flow-cli&Date)
+
+---
+
+## 🤝 Community & Contributing
+
+- **Issues**: [Report bugs or request features](https://github.com/Zahed316/google-flow-cli/issues)
+- **Discussions**: [Discuss workflows, tips, and prompt engineering](https://github.com/Zahed316/google-flow-cli/discussions)
+- **Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md) for full setup instructions, architecture deep-dive, and pull request guidelines
+- **Code of Conduct**: See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 
 ---
 
