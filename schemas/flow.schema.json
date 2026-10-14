@@ -1,0 +1,198 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://flow.google/schema/v1.json",
+  "title": "Google Flow Project Specification",
+  "description": "Declarative project schema for google-flow-cli automated AI video and image generation pipelines",
+  "type": "object",
+  "required": ["version", "name"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "URI of the JSON schema for validation and IDE intellisense"
+    },
+    "version": {
+      "type": "string",
+      "description": "Configuration specification version",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable project identifier"
+    },
+    "project": {
+      "type": "object",
+      "description": "Google Flow remote project metadata",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Google Flow project UUID (e.g. 547683bf-5c5e-4ad3-8943-d2df0a4575c5)"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Full URL to the project in Google Flow"
+        },
+        "title": {
+          "type": "string",
+          "description": "Project title in Google Flow UI"
+        }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "description": "Global default parameters applied to scenes when omitted",
+      "properties": {
+        "mediaType": {
+          "type": "string",
+          "enum": ["video", "image"],
+          "default": "video",
+          "description": "Generation media format: animated video or static image"
+        },
+        "model": {
+          "type": "string",
+          "description": "AI model family: Video ('Omni 1.1 Flash', 'Veo 3.1 - Fast', 'Veo 3.1 - Lite', 'Veo 3.1 - Quality') or Image ('Nano Banana 2.1', 'Nano Banana Pro', 'Nano Banana 2 Lite')",
+          "enum": [
+            "Omni 1.1 Flash",
+            "Veo 3.1 - Fast",
+            "Veo 3.1 - Lite",
+            "Veo 3.1 - Quality",
+            "Nano Banana 2.1",
+            "Nano Banana Pro",
+            "Nano Banana 2 Lite",
+            "omni",
+            "veo-fast",
+            "veo-lite",
+            "veo-quality",
+            "banana-2.1",
+            "banana-pro",
+            "banana-lite"
+          ],
+          "default": "Omni 1.1 Flash"
+        },
+        "resolution": {
+          "type": "string",
+          "enum": ["720p", "360p"],
+          "default": "720p",
+          "description": "Video resolution (video only)"
+        },
+        "duration": {
+          "type": "string",
+          "enum": ["4s", "6s", "8s", "10s"],
+          "default": "8s",
+          "description": "Clip duration (video only)"
+        },
+        "aspect": {
+          "type": "string",
+          "enum": ["9:16", "16:9", "1:1", "4:3", "3:4"],
+          "default": "9:16",
+          "description": "Aspect ratio (9:16 vertical, 16:9 landscape, 1:1 square, 4:3, 3:4)"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["Frames", "Ingredients"],
+          "default": "Frames",
+          "description": "Generation mode: keyframe interpolation (Frames) or prompt + media elements (Ingredients)"
+        },
+        "batches": {
+          "type": "string",
+          "enum": ["x1", "x2", "x3", "x4"],
+          "default": "x1",
+          "description": "Number of concurrent variations generated per request"
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 1200,
+          "default": 300,
+          "description": "Maximum seconds to wait for generation per scene"
+        },
+        "cdpPort": {
+          "type": "integer",
+          "default": 9222
+        },
+        "profileDir": {
+          "type": "string",
+          "description": "Custom Chrome persistent user data directory path"
+        }
+      }
+    },
+    "scenes": {
+      "type": "array",
+      "description": "Sequential or modular video/image scenes to generate",
+      "items": {
+        "type": "object",
+        "required": ["name", "prompt"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Unique identifier for this scene (e.g. scene_01)"
+          },
+          "mediaType": {
+            "type": "string",
+            "enum": ["video", "image"]
+          },
+          "model": {
+            "type": "string",
+            "enum": [
+              "Omni 1.1 Flash",
+              "Veo 3.1 - Fast",
+              "Veo 3.1 - Lite",
+              "Veo 3.1 - Quality",
+              "Nano Banana 2.1",
+              "Nano Banana Pro",
+              "Nano Banana 2 Lite",
+              "omni",
+              "veo-fast",
+              "veo-lite",
+              "veo-quality",
+              "banana-2.1",
+              "banana-pro",
+              "banana-lite"
+            ]
+          },
+          "start": {
+            "type": "string",
+            "description": "Relative or absolute file path to the starting keyframe image"
+          },
+          "end": {
+            "type": "string",
+            "description": "Relative or absolute file path to the ending keyframe image"
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Motion graphic / generation prompt text injected into ProseMirror editor"
+          },
+          "output": {
+            "type": "string",
+            "description": "Target file path for the downloaded MP4 video or PNG image"
+          },
+          "resolution": {
+            "type": "string",
+            "enum": ["720p", "360p"]
+          },
+          "duration": {
+            "type": "string",
+            "enum": ["4s", "6s", "8s", "10s"]
+          },
+          "aspect": {
+            "type": "string",
+            "enum": ["9:16", "16:9", "1:1", "4:3", "3:4"]
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["Frames", "Ingredients"]
+          },
+          "batches": {
+            "type": "string",
+            "enum": ["x1", "x2", "x3", "x4"]
+          },
+          "timeout": {
+            "type": "integer",
+            "minimum": 30,
+            "maximum": 1200
+          }
+        }
+      }
+    }
+  }
+}

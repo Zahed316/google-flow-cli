@@ -1,0 +1,30 @@
+{
+  "$schema": "https://flow.google/schema/v1.json",
+  "version": "1.0.0",
+  "name": "my-video-project",
+  "project": {
+    "id": "",
+    "url": "",
+    "title": "Google Flow Project"
+  },
+  "defaults": {
+    "mediaType": "video",
+    "model": "Omni 1.1 Flash",
+    "resolution": "720p",
+    "duration": "8s",
+    "aspect": "9:16",
+    "mode": "Frames",
+    "batches": "x1",
+    "timeout": 300
+  },
+  "scenes": [
+    {
+      "name": "scene_01",
+      "model": "Veo 3.1 - Fast",
+      "start": "assets/frames/scene_01_start.png",
+      "end": "assets/frames/scene_01_end.png",
+      "prompt": "Minimalist Swiss motion graphic: cinematic smooth camera tracking, high contrast lighting.",
+      "output": "assets/videos/scene_01.mp4"
+    }
+  ]
+}

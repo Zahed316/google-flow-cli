@@ -1,0 +1,46 @@
+{
+  "$schema": "https://flow.google/schema/v1.json",
+  "version": "1.0.0",
+  "name": "narrative-explainer-pipeline",
+  "project": {
+    "id": "",
+    "url": "",
+    "title": "Chained Keyframe Explainer"
+  },
+  "defaults": {
+    "mediaType": "video",
+    "model": "Veo 3.1 - Fast",
+    "resolution": "720p",
+    "duration": "8s",
+    "aspect": "9:16",
+    "mode": "Frames",
+    "batches": "x1",
+    "timeout": 360
+  },
+  "scenes": [
+    {
+      "name": "scene_01_hook",
+      "model": "Veo 3.1 - Fast",
+      "start": "assets/frames/scene_01_start.png",
+      "end": "assets/frames/scene_01_end.png",
+      "prompt": "Hook scene: smooth camera push-in on subject, ambient lighting dissolves into high contrast vector shapes.",
+      "output": "assets/videos/scene_01_hook.mp4"
+    },
+    {
+      "name": "scene_02_transition",
+      "model": "Veo 3.1 - Quality",
+      "start": "assets/frames/scene_01_end.png",
+      "end": "assets/frames/scene_02_end.png",
+      "prompt": "Chained transition: the vector elements smoothly morph into an animated financial infographic.",
+      "output": "assets/videos/scene_02_transition.mp4"
+    },
+    {
+      "name": "scene_03_climax",
+      "model": "Veo 3.1 - Fast",
+      "start": "assets/frames/scene_02_end.png",
+      "end": "assets/frames/scene_03_end.png",
+      "prompt": "Climax scene: dramatic kinetic burst, glowing particles settle into final logo and headline.",
+      "output": "assets/videos/scene_03_climax.mp4"
+    }
+  ]
+}
