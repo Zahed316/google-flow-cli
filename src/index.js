@@ -5,11 +5,13 @@
 const FlowClient = require("./client");
 const dom = require("./dom");
 const config = require("./config");
+const mcp = require("./mcp");
 
 module.exports = {
   FlowClient,
   ...dom,
   ...config,
+  ...mcp,
 
   // Convenience helper functions
   createClient: (options) => new FlowClient(options),

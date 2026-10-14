@@ -1,0 +1,136 @@
+# Google Flow CLI (`google-flow-cli`)
+
+> Declarative CLI, programmatic Node.js SDK, and stdio Model Context Protocol (MCP) server for Google Flow (flow.google.com) AI video and image generation via persistent Chrome DevTools Protocol (CDP).
+
+## Overview
+
+Google Flow CLI automates Google Flow generative AI media creation using genuine Chrome browser sessions on port 9222, bypassing automated-browser detection (`AutomationControlled`) and preserving Google authentication. It provides full programmatic access to DeepMind Veo 3.1, Omni 1.1 Flash, and Nano Banana models.
+
+- Repository: https://github.com/Zahed316/google-flow-cli
+- Platform Target: flow.google.com
+- Supported Runtimes: Node.js >= 18.0.0
+- Protocols: Chrome DevTools Protocol (CDP), JSON-RPC 2.0 (MCP over stdio)
+
+## Operational Guardrails for AI Agents
+
+When automating Google Flow through scripts, subagents, or MCP tools, AI agents must adhere to the following rules:
+
+1. **Pre-Flight Diagnostics Before Action**:
+   - Always run `flow doctor --json` or invoke `flow_session_status` prior to invoking generation commands.
+   - Verify: `cdpOpen === true`, `playwright === true`, and `googleAuthenticated === true`.
+   - Never trigger generation if Chrome is closed or the user is not authenticated.
+
+2. **Strict Machine-Readable Output (`--json`)**:
+   - Every CLI command supports `--json` (`-j`).
+   - Parse stdout as JSON; stderr is reserved for diagnostics and warnings.
+
+3. **Credit and Quota Protection**:
+   - Google Flow generates 2 video variants per submission by default (`x1` batch multiplier).
+   - Never issue rapid-fire generation requests without awaiting completion (`--wait` / `-w`).
+   - Always run `flow run --dry-run` or pass `dry_run: true` before executing multi-scene pipelines to catch validation errors and missing asset paths without consuming compute.
+
+4. **Chained Keyframe Discipline**:
+   - Long-form cinematic coherence requires chained keyframes: Scene N's End frame image must match Scene N+1's Start frame image.
+   - Maintain uniform aspect ratios (e.g. `9:16` vertical or `16:9` widescreen) across all scenes within a chained narrative.
+
+5. **Angular CDK Overlay Management**:
+   - Modal dropdowns, model selection panels, and file dialogs reside in `.cdk-overlay-pane`.
+   - Always dismiss unclosed overlays (via Escape key or `dom.dismissOverlays()`) before attempting to click buttons on the underlying canvas.
+
+## Quick-Start CLI Reference
+
+### Environment & Diagnostics
+```bash
+# Check Chrome CDP port 9222, Playwright, and Google authentication
+flow doctor --json
+
+# Inspect active canvas: project ID, prompt, keyframes, and video count
+flow status --json
+```
+
+### Project Lifecycle Management
+```bash
+# List all user projects on Google Flow
+flow project list --json
+
+# Create a new project and switch active canvas
+flow project create "Product Teaser" --json
+
+# Switch to an existing project canvas
+flow project switch <project-id> --json
+```
+
+### Generation Configuration
+```bash
+# Video: Veo 3.1 Fast, 720p, 8s, 9:16, Frames mode
+flow config --media video -M "Veo 3.1 - Fast" -r 720p -d 8s -a 9:16 -m Frames --json
+
+# Image: Nano Banana Pro, 9:16 aspect ratio
+flow config --media image -M "Nano Banana Pro" -a 9:16 --json
+```
+
+### Scene Generation
+```bash
+# Frames-to-Video generation with start/end keyframes
+flow scene \
+  -s ./frames/scene_01_start.png \
+  -e ./frames/scene_01_end.png \
+  -p "Cinematic slow zoom into golden geometric monolith, moody lighting" \
+  -M "Veo 3.1 - Fast" \
+  -o ./videos/scene_01.mp4 \
+  --generate -w -t 300 --json
+
+# Text-to-Video generation (prompt only)
+flow scene \
+  -p "Minimalist Swiss typography in motion, black and white high contrast" \
+  -M "Omni 1.1 Flash" \
+  -o ./videos/scene_02.mp4 \
+  --generate -w --json
+```
+
+### Declarative Pipeline Execution
+```bash
+# Dry-run validation of flow.json pipeline
+flow run --dry-run --json
+
+# Execute specific scene from flow.json
+flow run --scene scene_01 --json
+```
+
+### Video Retrieval
+```bash
+# List all generated videos and signed CDN URLs in current project
+flow videos list --json
+
+# Download the most recently generated video asset
+flow videos download-latest -o ./latest.mp4 --json
+```
+
+## Stdio MCP Server (`flow-mcp`)
+
+Google Flow CLI includes a zero-dependency JSON-RPC 2.0 stdio MCP server for direct integration with AI coding assistants (Claude Code, Cursor, Antigravity, Codex).
+
+```bash
+# Launch MCP server over stdio
+flow-mcp
+# Or via npx
+npx google-flow-cli flow-mcp
+```
+
+### Available MCP Tools
+- `flow_session_status`: Inspect connection, project ID, auth status, active settings.
+- `flow_generate_video`: Generate video via Veo 3.1 or Omni 1.1 Flash (Text-to-Video or Frames-to-Video).
+- `flow_generate_image`: Generate static keyframes via Nano Banana models.
+- `flow_list_projects`: List all user projects on Google Flow.
+- `flow_switch_project`: Switch active project canvas in Chrome.
+- `flow_run_pipeline`: Execute or dry-run `flow.json` pipeline.
+
+## Documentation & Reference Links
+
+- [README](README.md): Comprehensive setup, architecture diagrams, and CLI reference.
+- [AGENTS](AGENTS.md): Detailed operational manual and failure mode recovery for AI agents.
+- [Model Matrix & Settings Reference](references/models-and-settings.md): Model capabilities, supported resolutions, durations, and aspect ratios.
+- [DOM Selectors & CDK Patterns](references/selectors.md): UI selectors, Angular CDK overlay handling, and ProseMirror event injection.
+- [Pipeline Schema](schemas/flow.schema.json): JSON Schema Draft-07 specification for `flow.json`.
+- [Default Pipeline Template](templates/flow.json): Starter template for declarative multi-scene pipelines.
+- [Narrative Chained Pipeline Template](templates/narrative-pipeline.json): Multi-scene narrative template with chained keyframe transitions.

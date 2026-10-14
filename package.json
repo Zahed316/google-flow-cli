@@ -6,7 +6,8 @@
   "bin": {
     "google-flow-cli": "./bin/flow.js",
     "flow": "./bin/flow.js",
-    "google-flow": "./bin/flow.js"
+    "google-flow": "./bin/flow.js",
+    "flow-mcp": "./bin/flow-mcp.js"
   },
   "files": [
     "src",
@@ -47,7 +48,7 @@
   },
   "scripts": {
     "test": "node scripts/validate-schema.js && node bin/flow.js doctor",
-    "lint": "node -c src/index.js bin/flow.js",
+    "lint": "node -c src/index.js bin/flow.js src/mcp.js bin/flow-mcp.js",
     "validate:schema": "node scripts/validate-schema.js"
   },
   "optionalDependencies": {

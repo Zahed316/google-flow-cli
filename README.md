@@ -26,6 +26,7 @@ Designed for automated video pipelines, motion graphics workflows, and AI coding
 - [Programmatic Node.js SDK](#-programmatic-nodejs-sdk)
 - [Maintenance & Future Updates Guide](#-maintenance--future-updates-guide)
 - [Security & Credentials](#-security--credentials)
+- [AI Coding Agents & MCP Server](#-ai-coding-agents--mcp-server)
 - [Claude Code Skill Integration](#-claude-code-skill-integration)
 - [Star History](#-star-history)
 - [Community & Contributing](#-community--contributing)
@@ -375,6 +376,54 @@ To run a manual secret scan before publishing:
 ```bash
 crenox scan
 ```
+
+---
+
+## 🤖 AI Coding Agents & MCP Server
+
+`google-flow-cli` includes a lightweight, zero-external-dependency stdio **Model Context Protocol (MCP)** server (`flow-mcp`), allowing autonomous AI coding assistants (Claude Code, Cursor, Antigravity, OpenAI Codex) to inspect browser state, generate video/image assets, and run multi-scene pipelines as native LLM tools.
+
+### Adding to Claude Code
+Add the MCP server directly to Claude Code using the CLI:
+
+```bash
+claude mcp add google-flow npx google-flow-cli flow-mcp
+```
+
+Or run locally from source within the repository:
+
+```bash
+claude mcp add google-flow node ./bin/flow-mcp.js
+```
+
+### Adding to Cursor & Antigravity
+Add `google-flow` to your Cursor or project MCP configuration (`~/.cursor/mcp.json` or `.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "google-flow": {
+      "command": "npx",
+      "args": ["google-flow-cli", "flow-mcp"]
+    }
+  }
+}
+```
+
+### Available MCP Tools
+
+| Tool | Parameters | Description |
+| :--- | :--- | :--- |
+| `flow_session_status` | `port?` | Checks CDP port connection, Google auth status, project ID, and active canvas settings. |
+| `flow_generate_video` | `prompt`, `model?`, `start_frame?`, `end_frame?`, `resolution?`, `duration?`, `aspect?`, `mode?`, `output?`, `wait?`, `timeout?` | Generates video via Veo 3.1 or Omni 1.1 Flash (supports Text-to-Video and Frames-to-Video). |
+| `flow_generate_image` | `prompt`, `model?`, `aspect?`, `output?`, `wait?`, `timeout?` | Generates static keyframes via Nano Banana models. |
+| `flow_list_projects` | (none) | Lists all user projects on Google Flow with their IDs, titles, and URLs. |
+| `flow_switch_project` | `project_id` | Switches the active project canvas in Chrome by project ID. |
+| `flow_run_pipeline` | `config_path?`, `scene?`, `dry_run?` | Executes or dry-runs declarative `flow.json` multi-scene pipelines. |
+
+### AI Agent Discovery & Guidelines
+- **[`llms.txt`](llms.txt)**: Concise machine-readable index for fast LLM context injection and agent discovery.
+- **[`AGENTS.md`](AGENTS.md)**: Exhaustive operational instructions for AI agents, covering pre-flight diagnostics, Angular CDK overlay handling, virtual-scroll lazy-tile mounting, generation timeouts, quota preservation, and chained keyframe conventions.
 
 ---
 
