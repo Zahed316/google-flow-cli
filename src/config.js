@@ -100,9 +100,36 @@ function scaffoldConfig(targetDir = process.cwd(), options = {}) {
   if (options.name) configData.name = options.name;
   if (options.projectId) configData.project.id = options.projectId;
   if (options.projectUrl) configData.project.url = options.projectUrl;
+  if (options.title) configData.project.title = options.title;
 
   fs.writeFileSync(targetFile, JSON.stringify(configData, null, 2), "utf-8");
   return { path: targetFile, config: configData };
+}
+
+/**
+ * Updates an existing flow.json file with new project metadata.
+ */
+function updateProjectConfig(projectId, projectUrl = null, projectTitle = null, configPath = null) {
+  const target = configPath ? path.resolve(configPath) : findConfig();
+  if (!target || !fs.existsSync(target)) return null;
+
+  try {
+    const raw = fs.readFileSync(target, "utf-8");
+    const parsed = JSON.parse(raw);
+    if (!parsed.project) parsed.project = {};
+    if (projectId) parsed.project.id = projectId;
+    if (projectUrl) {
+      parsed.project.url = projectUrl;
+    } else if (projectId) {
+      parsed.project.url = `https://flow.google.com/project/${projectId}`;
+    }
+    if (projectTitle) parsed.project.title = projectTitle;
+
+    fs.writeFileSync(target, JSON.stringify(parsed, null, 2), "utf-8");
+    return { path: target, config: parsed };
+  } catch (err) {
+    return null;
+  }
 }
 
 /**
@@ -135,5 +162,6 @@ module.exports = {
   findConfig,
   loadConfig,
   scaffoldConfig,
+  updateProjectConfig,
   mergeSceneDefaults
 };

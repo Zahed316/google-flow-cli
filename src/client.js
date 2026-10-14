@@ -93,12 +93,15 @@ class FlowClient {
         report.projectId = projectMatch ? projectMatch[1] : null;
 
         const authState = await page.evaluate(() => {
-          const bodyText = document.body ? document.body.innerText : "";
-          const hasSignIn = bodyText.includes("Sign in") || !!document.querySelector("a[href*='accounts.google.com']");
+          const hasSignInPrompt = !!document.querySelector("a[href*='ServiceLogin'], a[href*='signin']") ||
+            Array.from(document.querySelectorAll("button, a")).some((el) => el.innerText && el.innerText.trim() === "Sign in");
           const hasProjectUI = !!document.querySelector("button[aria-label='Settings trigger'], .prompt-box-content, flow-video-tile");
+          const hasDashboardUI = !!document.querySelector(".projects-grid-item, button.new-project-button, .header-user-button, a[href*='SignOutOptions']");
+          const isAuthenticated = (hasProjectUI || hasDashboardUI) && !hasSignInPrompt;
           return {
-            isAuthenticated: hasProjectUI && !hasSignIn,
-            hasProjectUI
+            isAuthenticated,
+            hasProjectUI,
+            hasDashboardUI
           };
         });
 
@@ -123,6 +126,9 @@ class FlowClient {
       const projectMatch = url.match(/\/project\/([a-f0-9\-]+)/);
       const projectId = projectMatch ? projectMatch[1] : null;
 
+      const titleEl = document.querySelector(".header-title");
+      const projectTitle = titleEl ? titleEl.innerText.trim() : null;
+
       const settingsBtn = document.querySelector(
         "button[aria-label='Settings trigger'], button.settings-trigger-button"
       );
@@ -137,27 +143,38 @@ class FlowClient {
       // Check End chip
       const endEmpty = buttons.find((b) => b.innerText.trim() === "End" && b.classList.contains("empty-chip"));
 
+      const promptEl = document.querySelector(".ProseMirror");
+      const promptText = promptEl ? promptEl.innerText.trim() : "";
+
       const generateBtn = document.querySelector(
         "button.generate-icon-button, button[aria-label='Start generation']"
       );
       const canGenerate = generateBtn && !generateBtn.classList.contains("mat-mdc-button-disabled") && !generateBtn.hasAttribute("disabled");
 
-      const promptEditor = document.querySelector(".ProseMirror, [contenteditable='true']");
-      const promptText = promptEditor ? promptEditor.innerText.trim() : "";
+      // Active progress spinners
+      const spinner = document.querySelector("mat-progress-spinner, mat-spinner");
 
-      const spinner = document.querySelector("mat-progress-spinner, .progress-spinner, [role='progressbar']");
-      const videoElements = Array.from(document.querySelectorAll("flow-video-tile, video"));
+      // Count videos
+      const videoElements = document.querySelectorAll("video, flow-video-tile");
+
+      // Dashboard items
+      const isDashboard = !projectId;
+      const dashboardProjects = document.querySelectorAll(".projects-grid-item");
 
       const isImage = settingsText ? settingsText.toLowerCase().includes("image") : false;
 
       return {
         url,
         projectId,
+        projectTitle,
+        isDashboard,
+        dashboardProjectsCount: dashboardProjects.length,
         mediaType: isImage ? "image" : "video",
         settingsSummary: settingsText,
         startFrame: {
           empty: !!startEmpty,
-          set: !startEmpty
+          set: !startEmpty,
+          hasChip: !!startChip
         },
         endFrame: {
           empty: !!endEmpty,
@@ -409,6 +426,38 @@ class FlowClient {
     }
 
     return { status: "completed", executed };
+  }
+
+  /**
+   * Lists all Google Flow projects associated with the account.
+   */
+  async listProjects() {
+    const page = await this.connect();
+    return await dom.listProjects(page);
+  }
+
+  /**
+   * Creates a new Google Flow project and optionally sets its title.
+   */
+  async createProject(options = {}) {
+    const page = await this.connect();
+    return await dom.createProject(page, options);
+  }
+
+  /**
+   * Navigates / switches to a specific project by ID.
+   */
+  async switchProject(projectId) {
+    const page = await this.connect();
+    return await dom.openProject(page, projectId);
+  }
+
+  /**
+   * Deletes a project by ID or deletes the currently open project.
+   */
+  async deleteProject(projectId = null, options = {}) {
+    const page = await this.connect();
+    return await dom.deleteProject(page, projectId, options);
   }
 }
 

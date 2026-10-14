@@ -12,7 +12,27 @@ This document maps the Angular Material (MDC / Angular CDK) DOM elements, compon
 | `flow-project-shell` | Main workspace container | Houses navigation, canvas, and toolbar |
 | `button[aria-label="Home"]` | Return to projects list | Icon `home` |
 | `button[aria-label="More options for the project"]` | Project metadata & actions | Icon `more_vert` |
+| `.header-title` | Project title label in header | Clicking triggers inline rename input |
+| `input.editable-text-input` | Inline project title editor input | Appears when `.header-title` is clicked |
 | `.settings-trigger-button` / `button[aria-label="Settings trigger"]` | Generation settings pill | Shows e.g. `Video · 720p · 8s \| crop_9_16 \| x1` |
+
+---
+
+## 1.1 Home Dashboard & Project Management
+
+When navigated to `https://flow.google.com/`, the home dashboard renders project cards and management controls.
+
+| Component / Selector | Purpose | Notes |
+|---|---|---|
+| `button.new-project-button` | Create project button | Triggers navigation to `https://flow.google.com/project/<UUID>` |
+| `.projects-grid-item` | Grid wrapper for each project card | One per project |
+| `flow-project-card` | Angular component for project item | Contained inside `.projects-grid-item` |
+| `a.project-thumbnail-container` | Project navigation link | Contains `href="/project/<UUID>"` |
+| `.project-title-label` | Project title text element | Displays project title or timestamp |
+| `img.project-thumbnail` | Project thumbnail image | Contains preview image URL |
+| `button[aria-label="Delete project"]` | Delete project button | Opens delete confirmation dialog |
+| `mat-dialog-container` | Angular Material confirmation dialog | Contains confirmation text and action buttons |
+| `mat-dialog-container button:has-text('Delete project')` | Confirm delete button | Executes project deletion |
 
 ---
 

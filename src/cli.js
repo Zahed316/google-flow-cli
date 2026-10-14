@@ -3,9 +3,20 @@
  */
 
 const path = require("path");
+const readline = require("readline");
 const FlowClient = require("./client");
 const configHelper = require("./config");
 const dom = require("./dom");
+
+function promptConfirm(question) {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(/^y(es)?$/i.test(answer.trim()));
+    });
+  });
+}
 
 function parseArgs(args) {
   const parsed = { _: [], options: {} };
@@ -74,6 +85,10 @@ USAGE:
 
 COMMANDS:
   init                     Scaffold a new flow.json project configuration
+  project list             List all user projects (alias: ls, flow projects)
+  project create [title]   Create a new project on Google Flow and switch to it
+  project switch <id>      Switch active browser tab to project by ID (alias: open, nav)
+  project delete [id]      Delete a project by ID or current project (--force to bypass)
   doctor                   Run full environment, Chrome CDP, and auth diagnostics
   status                   Inspect active project state, settings, frames, and prompt
   config                   Set generation media type, model, resolution, duration, aspect, or mode
@@ -84,6 +99,8 @@ COMMANDS:
   launch                   Launch Google Chrome with persistent profile on CDP port 9222
 
 OPTIONS / FLAGS:
+  --project <id>           Target or bind a specific Google Flow project ID
+  --new                    Create a fresh Google Flow project automatically
   --media <type>           Media generation type: video or image
   -M, --model <name>       Generation model:
                              Video: 'Omni 1.1 Flash', 'Veo 3.1 - Fast', 'Veo 3.1 - Lite', 'Veo 3.1 - Quality'
@@ -101,13 +118,26 @@ OPTIONS / FLAGS:
   -t, --timeout <sec>      Timeout in seconds (default: 300)
   --dry-run                Validate and preview pipeline without triggering live generation
   --scene <name>           Run only a specific scene from flow.json
-  -f, --force              Force overwrite existing files
+  -f, --force              Force overwrite existing files or bypass confirmation
   -j, --json               Output raw JSON for machine composition
   -h, --help               Show this help message
 
 EXAMPLES:
-  # Initialize a new project in current directory
-  flow init
+  # List all projects
+  flow project list
+  flow projects --json
+
+  # Create a new project and bind to flow.json
+  flow project create "Product Launch Video"
+
+  # Switch to an existing project
+  flow project switch 547683bf-5c5e-4ad3-8943-d2df0a4575c5
+
+  # Delete a project
+  flow project delete <id> --force
+
+  # Initialize a new config bound to a newly created project
+  flow init --new --name "My Project"
 
   # Check active connection, model, and project status
   flow doctor
@@ -148,15 +178,140 @@ async function runCli(argv = process.argv.slice(2)) {
     switch (command) {
       case "init": {
         const targetDir = _[1] || process.cwd();
+        let projectId = options.project || options.projectId || null;
+        let projectUrl = null;
+        let projectTitle = options.title || null;
+
+        if (options.new) {
+          console.log("Creating new Google Flow project for initialization...");
+          const newProj = await client.createProject({ title: options.name || options.title });
+          projectId = newProj.id;
+          projectUrl = newProj.url;
+          projectTitle = newProj.title;
+          console.log(`Created project ${projectId} (${projectTitle})`);
+        } else if (projectId) {
+          projectUrl = `https://flow.google.com/project/${projectId}`;
+        }
+
         const res = configHelper.scaffoldConfig(targetDir, {
           name: options.name,
           template: options.template,
-          force: options.force
+          force: options.force,
+          projectId,
+          projectUrl,
+          title: projectTitle
         });
+
         if (options.json) {
           console.log(JSON.stringify(res, null, 2));
         } else {
           console.log(`Successfully initialized Google Flow project configuration at: ${res.path}`);
+          if (projectId) {
+            console.log(`Bound to project ID: ${projectId}`);
+          }
+        }
+        break;
+      }
+
+      case "projects":
+      case "project": {
+        const action = (command === "projects" && !subcommand) ? "list" : (subcommand || "list");
+
+        switch (action) {
+          case "list":
+          case "ls": {
+            const projects = await client.listProjects();
+            if (options.json) {
+              console.log(JSON.stringify(projects, null, 2));
+            } else {
+              console.log(`\nGoogle Flow Projects (${projects.length} total):\n`);
+              console.log(
+                "  #".padEnd(5) +
+                "PROJECT ID".padEnd(40) +
+                "TITLE".padEnd(30) +
+                "URL"
+              );
+              console.log("  " + "-".repeat(110));
+              projects.forEach((p, idx) => {
+                const num = String(idx + 1).padStart(2);
+                const id = (p.id || "").padEnd(38);
+                const title = (p.title || "Untitled").slice(0, 28).padEnd(28);
+                console.log(`  ${num}  ${id}  ${title}  ${p.url}`);
+              });
+              console.log(`\nUse 'flow project switch <id>' to switch to a project.`);
+            }
+            break;
+          }
+
+          case "create": {
+            const titleArg = _[2] || options.title || options.name;
+            const res = await client.createProject({ title: titleArg });
+            const configUpdated = configHelper.updateProjectConfig(res.id, res.url, res.title);
+
+            if (options.json) {
+              console.log(JSON.stringify({ ...res, flowJsonUpdated: !!configUpdated }, null, 2));
+            } else {
+              console.log("\nCreated new Google Flow project:");
+              console.log(`  Project ID:   ${res.id}`);
+              console.log(`  Title:        ${res.title}`);
+              console.log(`  URL:          ${res.url}`);
+              if (configUpdated) {
+                console.log(`  Configuration: Updated ${configUpdated.path}`);
+              }
+            }
+            break;
+          }
+
+          case "switch":
+          case "open":
+          case "nav": {
+            const targetId = _[2] || options.id || options.project || options.projectId;
+            if (!targetId) {
+              throw new Error("Project ID is required. Usage: flow project switch <id>");
+            }
+            const res = await client.switchProject(targetId);
+            const configUpdated = configHelper.updateProjectConfig(res.id, res.url, res.title);
+
+            if (options.json) {
+              console.log(JSON.stringify({ ...res, flowJsonUpdated: !!configUpdated }, null, 2));
+            } else {
+              console.log("\nSwitched active Google Flow project:");
+              console.log(`  Project ID:   ${res.id}`);
+              if (res.title) console.log(`  Title:        ${res.title}`);
+              console.log(`  URL:          ${res.url}`);
+              if (configUpdated) {
+                console.log(`  Configuration: Updated ${configUpdated.path}`);
+              }
+            }
+            break;
+          }
+
+          case "delete": {
+            const targetId = _[2] || options.id || options.project || options.projectId || null;
+            if (!options.force && !options.f) {
+              const promptMsg = targetId
+                ? `Are you sure you want to delete project ${targetId}? [y/N]: `
+                : "Are you sure you want to delete the currently active project? [y/N]: ";
+              const confirmed = await promptConfirm(promptMsg);
+              if (!confirmed) {
+                console.log("Deletion cancelled.");
+                break;
+              }
+            }
+
+            const res = await client.deleteProject(targetId, options);
+            if (options.json) {
+              console.log(JSON.stringify(res, null, 2));
+            } else {
+              console.log(`\nSuccessfully deleted Google Flow project: ${res.id}`);
+            }
+            break;
+          }
+
+          default:
+            console.error(`Unknown project subcommand: ${action}`);
+            console.log("Available subcommands: list (ls), create, switch (open), delete");
+            process.exit(1);
         }
         break;
       }
@@ -187,11 +342,22 @@ async function runCli(argv = process.argv.slice(2)) {
         const status = await client.status();
         if (options.json) {
           console.log(JSON.stringify(status, null, 2));
+        } else if (status.isDashboard) {
+          console.log("\n=== Google Flow Dashboard Status ===");
+          console.log(`URL:                ${status.url}`);
+          console.log(`Active Canvas:      Dashboard / Home (No project open)`);
+          console.log(`Detected Projects:  ${status.dashboardProjectsCount} project cards`);
+          console.log("\nQuick Actions:");
+          console.log("  flow project list              # View all available projects");
+          console.log("  flow project create [title]    # Create and switch to a new project");
+          console.log("  flow project switch <id>       # Open a specific project");
         } else {
           console.log("\n=== Active Google Flow Project Status ===");
-          console.log(`URL:              ${status.url}`);
+          console.log(`Title:            ${status.projectTitle || "Untitled"}`);
           console.log(`Project ID:       ${status.projectId || "None"}`);
+          console.log(`URL:              ${status.url}`);
           console.log(`Settings:         ${status.settingsSummary || "Defaults"}`);
+          console.log(`Media Type:       ${status.mediaType || "video"}`);
           console.log(`Start Keyframe:   ${status.startFrame.set ? "SET" : "EMPTY"}`);
           console.log(`End Keyframe:     ${status.endFrame.set ? "SET" : "EMPTY"}`);
           console.log(`Prompt:           ${status.promptText ? `"${status.promptText.slice(0, 80)}..."` : "EMPTY"}`);

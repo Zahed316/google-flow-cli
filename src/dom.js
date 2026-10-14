@@ -184,7 +184,9 @@ async function getFlowSession(cdpUrl = "http://127.0.0.1:9222", autoLaunch = tru
   }
 
   const context = contexts[0];
-  let page = context.pages().find((p) => p.url().includes("flow.google.com"));
+  const allPages = context.pages();
+  let page = allPages.find((p) => p.url().includes("flow.google.com/project/")) ||
+             allPages.find((p) => p.url().includes("flow.google.com"));
 
   if (!page) {
     page = await context.newPage();
@@ -509,6 +511,239 @@ async function configureSettings(page, config = {}) {
   return applied;
 }
 
+/**
+ * Lists all user projects from Google Flow home dashboard.
+ */
+async function listProjects(page) {
+  await dismissOverlays(page);
+  const currentUrl = page.url();
+  if (!currentUrl.startsWith("https://flow.google.com/") || currentUrl.includes("/project/")) {
+    const homeBtn = await page.$("button[aria-label='Home'], button.back-button");
+    if (homeBtn) {
+      await homeBtn.click();
+      await page.waitForURL("https://flow.google.com/", { timeout: 10000 });
+    } else {
+      await page.goto("https://flow.google.com/", { waitUntil: "domcontentloaded" });
+    }
+  }
+
+  // Wait for projects grid to load (or fallback if user has no projects)
+  try {
+    await page.waitForSelector(".projects-grid-item", { timeout: 8000 });
+  } catch (e) {
+    await page.waitForSelector("button.new-project-button", { timeout: 5000 }).catch(() => {});
+  }
+  await page.waitForTimeout(500);
+
+  const projects = await page.evaluate(() => {
+    const items = Array.from(document.querySelectorAll(".projects-grid-item"));
+    const seen = new Set();
+    const result = [];
+
+    for (const item of items) {
+      const link = item.querySelector("a.project-thumbnail-container, a[href*='/project/']");
+      const href = link ? link.getAttribute("href") : "";
+      const match = href.match(/\/project\/([a-zA-Z0-9_\-]+)/);
+      if (!match) continue;
+      const id = match[1];
+      if (seen.has(id)) continue;
+      seen.add(id);
+
+      const titleEl = item.querySelector(".project-title-label");
+      let title = "";
+      if (titleEl) {
+        const clone = titleEl.cloneNode(true);
+        Array.from(clone.querySelectorAll("button, mat-icon")).forEach((b) => b.remove());
+        title = clone.innerText.trim();
+      }
+
+      const img = item.querySelector("img.project-thumbnail");
+      const thumbnail = img ? img.src : null;
+
+      result.push({
+        id,
+        title: title || "Untitled Project",
+        url: `https://flow.google.com/project/${id}`,
+        thumbnail
+      });
+    }
+    return result;
+  });
+
+  return projects;
+}
+
+/**
+ * Creates a new project in Google Flow and waits for navigation to the project canvas.
+ */
+async function createProject(page, options = {}) {
+  await dismissOverlays(page);
+  const currentUrl = page.url();
+  if (currentUrl.includes("/project/")) {
+    const homeBtn = await page.$("button[aria-label='Home'], button.back-button");
+    if (homeBtn) {
+      await homeBtn.click();
+      await page.waitForURL("https://flow.google.com/", { timeout: 10000 });
+    } else {
+      await page.goto("https://flow.google.com/", { waitUntil: "domcontentloaded" });
+    }
+  }
+
+  const newBtnSelector = "button.new-project-button, button:has-text('New project')";
+  await page.waitForSelector(newBtnSelector, { timeout: 15000 });
+  const newBtn = await page.$(newBtnSelector);
+  if (!newBtn) throw new Error("Could not find 'New project' button on Google Flow dashboard.");
+
+  await newBtn.click();
+  await page.waitForURL(/\/project\/[a-f0-9\-]+/, { timeout: 20000 });
+
+  const newUrl = page.url();
+  const match = newUrl.match(/\/project\/([a-f0-9\-]+)/);
+  const newProjectId = match ? match[1] : null;
+
+  // Wait for canvas / header UI to be ready
+  await page.waitForSelector(".header-left-container, flow-navigation-header, .ProseMirror", { timeout: 15000 });
+  await page.waitForTimeout(500);
+
+  let finalTitle = null;
+  const desiredTitle = typeof options === "string" ? options : options.title;
+
+  if (desiredTitle) {
+    try {
+      const titleSpan = await page.$(".header-title");
+      if (titleSpan) {
+        await titleSpan.click();
+        await page.waitForTimeout(300);
+        await page.keyboard.press("Control+A");
+        await page.keyboard.type(desiredTitle, { delay: 10 });
+        await page.keyboard.press("Enter");
+        await page.waitForTimeout(400);
+        finalTitle = desiredTitle;
+      }
+    } catch (e) {}
+  }
+
+  if (!finalTitle) {
+    const titleSpan = await page.$(".header-title");
+    finalTitle = titleSpan ? (await titleSpan.innerText()).trim() : "Untitled";
+  }
+
+  return {
+    id: newProjectId,
+    title: finalTitle,
+    url: newUrl
+  };
+}
+
+/**
+ * Navigates to a specific Google Flow project by ID.
+ */
+async function openProject(page, projectId) {
+  if (!projectId) throw new Error("Project ID is required to open a project.");
+  const targetUrl = `https://flow.google.com/project/${projectId}`;
+
+  if (page.url() !== targetUrl) {
+    await page.goto(targetUrl, { waitUntil: "domcontentloaded" });
+  }
+
+  await page.waitForSelector(".header-left-container, flow-navigation-header, .ProseMirror", { timeout: 15000 });
+  await dismissOverlays(page);
+
+  const titleEl = await page.$(".header-title");
+  const title = titleEl ? (await titleEl.innerText()).trim() : null;
+
+  return {
+    id: projectId,
+    title,
+    url: page.url()
+  };
+}
+
+/**
+ * Deletes a Google Flow project either by ID from the dashboard or the currently active project.
+ */
+async function deleteProject(page, projectId = null, options = {}) {
+  await dismissOverlays(page);
+
+  let targetId = projectId;
+  if (!targetId) {
+    const currentUrl = page.url();
+    const match = currentUrl.match(/\/project\/([a-f0-9\-]+)/);
+    if (match) {
+      targetId = match[1];
+    } else {
+      throw new Error("No project ID specified and currently not on a project page.");
+    }
+  }
+
+  // If currently inside the target project, delete via project header menu
+  const currentUrl = page.url();
+  if (currentUrl.includes(`/project/${targetId}`)) {
+    const moreBtn = await page.$("button[aria-label='More options for the project']");
+    if (moreBtn) {
+      await moreBtn.click();
+      await page.waitForTimeout(500);
+
+      const menuItems = await page.$$(".mat-mdc-menu-content button, [role='menuitem']");
+      let deleteItem = null;
+      for (const item of menuItems) {
+        const text = await item.innerText();
+        if (text.includes("Delete") && !text.toLowerCase().includes("trash")) {
+          deleteItem = item;
+          break;
+        }
+      }
+
+      if (deleteItem) {
+        await deleteItem.click();
+        await page.waitForSelector("mat-dialog-container button:has-text('Delete project')", { timeout: 10000 });
+        const confirmBtn = await page.$("mat-dialog-container button:has-text('Delete project')");
+        if (confirmBtn) {
+          await confirmBtn.click();
+          await page.waitForURL((url) => !url.href.includes(targetId), { timeout: 15000 });
+          await page.waitForTimeout(1000);
+          return { success: true, id: targetId };
+        }
+      }
+    }
+  }
+
+  // Otherwise, navigate to dashboard and delete from project card
+  if (!currentUrl.startsWith("https://flow.google.com/") || currentUrl.includes("/project/")) {
+    const homeBtn = await page.$("button[aria-label='Home'], button.back-button");
+    if (homeBtn) {
+      await homeBtn.click();
+      await page.waitForURL("https://flow.google.com/", { timeout: 10000 });
+    } else {
+      await page.goto("https://flow.google.com/", { waitUntil: "domcontentloaded" });
+    }
+  }
+
+  await page.waitForSelector(".projects-grid-item", { timeout: 15000 });
+  const cardSelector = `.projects-grid-item:has(a[href*='${targetId}'])`;
+  const card = await page.$(cardSelector);
+  if (!card) {
+    throw new Error(`Project with ID ${targetId} was not found on the dashboard.`);
+  }
+
+  const deleteBtn = await card.$("button[aria-label='Delete project']");
+  if (!deleteBtn) {
+    throw new Error(`Delete button for project ${targetId} was not found.`);
+  }
+
+  await deleteBtn.click();
+  await page.waitForSelector("mat-dialog-container button:has-text('Delete project')", { timeout: 10000 });
+  const confirmBtn = await page.$("mat-dialog-container button:has-text('Delete project')");
+  if (!confirmBtn) {
+    throw new Error("Confirmation button 'Delete project' not found in dialog.");
+  }
+
+  await confirmBtn.click();
+  await page.waitForTimeout(1200);
+
+  return { success: true, id: targetId };
+}
+
 module.exports = {
   getPlaywright,
   checkCdpPort,
@@ -522,5 +757,9 @@ module.exports = {
   downloadUrl,
   normalizeModelName,
   selectModel,
-  configureSettings
+  configureSettings,
+  listProjects,
+  createProject,
+  openProject,
+  deleteProject
 };

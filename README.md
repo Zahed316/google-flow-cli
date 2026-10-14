@@ -157,9 +157,13 @@ flow scene \
 
 | Command | Subcommand | Description |
 |---|---|---|
-| `flow init` | `[dir]` | Scaffold a new `flow.json` in target directory |
+| `flow init` | `[dir]` | Scaffold a new `flow.json` in target directory (supports `--project <id>` or `--new`) |
+| `flow project list` | - | List all user projects with ID, title, URL, and thumbnail (alias: `ls`, `flow projects`) |
+| `flow project create` | `[title]` | Create a new project on Google Flow, wait for canvas, and bind to `flow.json` |
+| `flow project switch` | `<id>` | Switch active browser tab to project by ID (alias: `open`, `nav`) and update `flow.json` |
+| `flow project delete` | `[id]` | Delete a project by ID or current project (`--force` to bypass confirmation) |
 | `flow doctor` | - | Diagnose Playwright, Chrome binary, CDP port, and auth status |
-| `flow status` | - | Inspect active project URL, settings pill, frame chips, and prompt |
+| `flow status` | - | Inspect active project URL, settings pill, frame chips, prompt, or dashboard overview |
 | `flow config` | - | Update generation settings (media type, model, aspect, duration, etc.) |
 | `flow scene` | - | Configure keyframes, prompt, and optionally trigger scene generation |
 | `flow run` | - | Execute declarative scene pipeline from `flow.json` |
@@ -171,6 +175,8 @@ flow scene \
 
 | Flag | Long Flag | Description | Default |
 |---|---|---|---|
+| - | `--project <id>` | Target or bind a specific Google Flow project ID | `null` |
+| - | `--new` | Create a fresh Google Flow project automatically (for `flow init`) | `false` |
 | - | `--media <type>` | Media generation type: `video` or `image` | `video` |
 | `-M` | `--model <name>` | AI model family: `Omni 1.1 Flash`, `Veo 3.1 - Fast`, `Nano Banana Pro`, etc. | `Omni 1.1 Flash` |
 | `-s` | `--start <path>` | Path to Start keyframe image (for Frames mode) | `null` |
@@ -186,7 +192,7 @@ flow scene \
 | `-t` | `--timeout <sec>`| Generation timeout in seconds | `300` |
 | - | `--dry-run` | Preview and validate execution plan without spending credits | `false` |
 | - | `--scene <name>` | Execute only a specific scene by name from `flow.json` | `all` |
-| `-f` | `--force` | Force overwrite existing files | `false` |
+| `-f` | `--force` | Force overwrite existing files or bypass deletion confirmation | `false` |
 | `-j` | `--json` | Output machine-readable JSON | `false` |
 | `-h` | `--help` | Show command usage and flags | - |
 
@@ -281,6 +287,15 @@ async function runPipeline() {
   // 1. Connect and verify status
   const status = await client.status();
   console.log("Current Project ID:", status.projectId);
+
+  // Project Management API
+  const projects = await client.listProjects();
+  console.log(`Discovered ${projects.length} Google Flow projects`);
+
+  // Switch to project or create new one:
+  // await client.switchProject("547683bf-5c5e-4ad3-8943-d2df0a4575c5");
+  // const newProj = await client.createProject({ title: "Automated Commercial" });
+  // await client.deleteProject(newProj.id);
 
   // 2. Configure video parameters
   await client.configure({
